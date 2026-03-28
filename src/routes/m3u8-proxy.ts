@@ -238,16 +238,28 @@ async function proxyM3U8(event: any) {
       for (const line of lines) {
         if (line.startsWith("#")) {
           if (line.startsWith("#EXT-X-KEY:")) {
-            // Proxy the key URL
-            const regex = /https?:\/\/[^\""\s]+/g;
-            const keyUrl = regex.exec(line)?.[0];
-            if (keyUrl) {
-              const proxyKeyUrl = `${baseProxyUrl}/ts-proxy?url=${encodeURIComponent(keyUrl)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
-              newLines.push(line.replace(keyUrl, proxyKeyUrl));
-            } else {
-              newLines.push(line);
-            }
-          } else if (line.startsWith("#EXT-X-MEDIA:")) {
+    const uriMatch = line.match(/URI="([^"]+)"/);
+
+    if (uriMatch) {
+        let keyUrl = uriMatch[1];
+
+        // 🔥 IMPORTANT: resolve relative → absolute using playlist URL
+        const absoluteKeyUrl = parseURL(keyUrl, url);
+
+        if (absoluteKeyUrl) {
+            const proxyKeyUrl =
+                `${baseProxyUrl}/ts-proxy?url=${encodeURIComponent(absoluteKeyUrl)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
+
+            newLines.push(
+                line.replace(uriMatch[1], proxyKeyUrl)
+            );
+        } else {
+            newLines.push(line);
+        }
+    } else {
+        newLines.push(line);
+    }
+} else if (line.startsWith("#EXT-X-MEDIA:")) {
             // Proxy alternative media URLs (like audio streams)
             const regex = /https?:\/\/[^\""\s]+/g;
             const mediaUrl = regex.exec(line)?.[0];
