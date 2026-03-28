@@ -344,10 +344,16 @@ async function proxyM3U8(event: any) {
     }
   } catch (error: any) {
     console.error('Error proxying M3U8:', error);
-    return sendError(event, createError({
+    setResponseHeaders(event, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': '*',
+      'Access-Control-Allow-Methods': '*'
+    });
+
+    throw createError({
       statusCode: 500,
       statusMessage: error.message || 'Error proxying M3U8 file'
-    }));
+    });
   }
 }
 
