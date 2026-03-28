@@ -238,12 +238,12 @@ async function proxyM3U8(event: any) {
       for (const line of lines) {
         if (line.startsWith("#")) {
           if (line.startsWith("#EXT-X-KEY:")) {
-    const uriMatch = line.match(/URI="([^"]+)"/);
+    const uriMatch = line.match(/URI="?([^",]+)"?/);
 
     if (uriMatch) {
         let keyUrl = uriMatch[1];
 
-        // 🔥 IMPORTANT: resolve relative → absolute using playlist URL
+        // 🔥 ALWAYS resolve relative paths
         const absoluteKeyUrl = parseURL(keyUrl, url);
 
         if (absoluteKeyUrl) {
@@ -254,11 +254,15 @@ async function proxyM3U8(event: any) {
                 line.replace(uriMatch[1], proxyKeyUrl)
             );
         } else {
+            console.error("❌ Failed to resolve key:", keyUrl);
             newLines.push(line);
         }
     } else {
+        console.warn("⚠️ No URI found in KEY line:", line);
         newLines.push(line);
     }
+
+    continue;
 } else if (line.startsWith("#EXT-X-MEDIA:")) {
             // Proxy alternative media URLs (like audio streams)
             const regex = /https?:\/\/[^\""\s]+/g;
