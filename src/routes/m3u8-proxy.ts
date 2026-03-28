@@ -243,7 +243,6 @@ async function proxyM3U8(event: any) {
     if (uriMatch) {
         let keyUrl = uriMatch[1];
 
-        // 🔥 ALWAYS resolve relative paths
         const absoluteKeyUrl = parseURL(keyUrl, url);
 
         if (absoluteKeyUrl) {
@@ -253,12 +252,16 @@ async function proxyM3U8(event: any) {
             newLines.push(
                 line.replace(uriMatch[1], proxyKeyUrl)
             );
+
+            if (!isCacheDisabled()) {
+                prefetchSegment(absoluteKeyUrl, headers as HeadersInit);
+            }
         } else {
             console.error("❌ Failed to resolve key:", keyUrl);
             newLines.push(line);
         }
     } else {
-        console.warn("⚠️ No URI found in KEY line:", line);
+        console.warn("⚠️ No URI in KEY line:", line);
         newLines.push(line);
     }
 
@@ -310,21 +313,35 @@ async function proxyM3U8(event: any) {
       for (const line of lines) {
         if (line.startsWith("#")) {
           if (line.startsWith("#EXT-X-KEY:")) {
-            // Proxy the key URL
-            const regex = /https?:\/\/[^\""\s]+/g;
-            const keyUrl = regex.exec(line)?.[0];
-            if (keyUrl) {
-              const proxyKeyUrl = `${baseProxyUrl}/ts-proxy?url=${encodeURIComponent(keyUrl)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
-              newLines.push(line.replace(keyUrl, proxyKeyUrl));
-              
-              // Only prefetch if cache is enabled
-              if (!isCacheDisabled()) {
-                prefetchSegment(keyUrl, headers as HeadersInit);
-              }
-            } else {
-              newLines.push(line);
+    const uriMatch = line.match(/URI="?([^",]+)"?/);
+
+    if (uriMatch) {
+        let keyUrl = uriMatch[1];
+
+        const absoluteKeyUrl = parseURL(keyUrl, url);
+
+        if (absoluteKeyUrl) {
+            const proxyKeyUrl =
+                `${baseProxyUrl}/ts-proxy?url=${encodeURIComponent(absoluteKeyUrl)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
+
+            newLines.push(
+                line.replace(uriMatch[1], proxyKeyUrl)
+            );
+
+            if (!isCacheDisabled()) {
+                prefetchSegment(absoluteKeyUrl, headers as HeadersInit);
             }
-          } else {
+        } else {
+            console.error("❌ Failed to resolve key:", keyUrl);
+            newLines.push(line);
+        }
+    } else {
+        console.warn("⚠️ No URI in KEY line:", line);
+        newLines.push(line);
+    }
+
+    continue;
+} else {
             newLines.push(line);
           }
         } else if (line.trim() && !line.startsWith("#")) {
