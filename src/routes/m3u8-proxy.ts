@@ -179,20 +179,33 @@ async function proxyM3U8(event: any) {
   const headersParam = getQuery(event).headers as string;
   
   if (!url) {
-    return sendError(event, createError({
+    setResponseHeaders(event, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': '*',
+      'Access-Control-Allow-Methods': '*'
+    });
+
+    throw createError({
       statusCode: 400,
-      statusMessage: 'URL parameter is required'
-    }));
+      statusMessage: error.message || 'URL parameter is required'
+    });
+
   }
   
   let headers = {};
   try {
     headers = headersParam ? JSON.parse(headersParam) : {};
   } catch (e) {
-    return sendError(event, createError({
+    setResponseHeaders(event, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': '*',
+      'Access-Control-Allow-Methods': '*'
+    });
+
+    throw createError({
       statusCode: 400,
-      statusMessage: 'Invalid headers format'
-    }));
+      statusMessage: error.message || 'Invalid headers format'
+    });
   }
   
   try {
@@ -369,12 +382,17 @@ export function handleCacheStats(event: any) {
 export default defineEventHandler(async (event) => {
   // Handle CORS preflight requests
   if (isPreflightRequest(event)) return handleCors(event, {});
-
   if (process.env.DISABLE_M3U8 === 'true') {
-    return sendError(event, createError({
+    setResponseHeaders(event, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': '*',
+      'Access-Control-Allow-Methods': '*'
+    });
+
+    throw createError({
       statusCode: 404,
-      statusMessage: 'M3U8 proxying is disabled'
-    }));
+      statusMessage: error.message || 'M3U8 proxying is disabled'
+    });
   }
   
   if (event.path === '/cache-stats') {

@@ -9,30 +9,48 @@ export default defineEventHandler(async (event) => {
   if (isPreflightRequest(event)) return handleCors(event, {});
 
   if (process.env.DISABLE_M3U8 === 'true') {
-    return sendError(event, createError({
+    setResponseHeaders(event, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': '*',
+      'Access-Control-Allow-Methods': '*'
+    });
+
+    throw createError({
       statusCode: 404,
-      statusMessage: 'TS proxying is disabled'
-    }));
+      statusMessage: error.message || 'TS proxying is disabled'
+    });
   }
   
   const url = getQuery(event).url as string;
   const headersParam = getQuery(event).headers as string;
   
   if (!url) {
-    return sendError(event, createError({
+    setResponseHeaders(event, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': '*',
+      'Access-Control-Allow-Methods': '*'
+    });
+
+    throw createError({
       statusCode: 400,
-      statusMessage: 'URL parameter is required'
-    }));
+      statusMessage: error.message || 'URL parameter is required'
+    });
   }
   
   let headers = {};
   try {
     headers = headersParam ? JSON.parse(headersParam) : {};
   } catch (e) {
-    return sendError(event, createError({
+    setResponseHeaders(event, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': '*',
+      'Access-Control-Allow-Methods': '*'
+    });
+
+    throw createError({
       statusCode: 400,
-      statusMessage: 'Invalid headers format'
-    }));
+      statusMessage: error.message || 'Invalid headers format'
+    });
   }
   
   try {
@@ -67,7 +85,7 @@ export default defineEventHandler(async (event) => {
     }
     
     setResponseHeaders(event, {
-      'Content-Type': 'video/mp2t',
+      'Content-Type': response.headers.get('content-type') || 'application/octet-stream',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': '*',
       'Access-Control-Allow-Methods': '*',
@@ -78,9 +96,19 @@ export default defineEventHandler(async (event) => {
     return new Uint8Array(await response.arrayBuffer());
   } catch (error: any) {
     console.error('Error proxying TS file:', error);
-    return sendError(event, createError({
-      statusCode: error.response?.status || 500,
+    setResponseHeaders(event, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': '*',
+      'Access-Control-Allow-Methods': '*'
+    });
+
+    throw createError({
+      statusCode: 500,
       statusMessage: error.message || 'Error proxying TS file'
-    }));
+    });
+    //return sendError(event, createError({
+      //statusCode: error.response?.status || 500,
+      //statusMessage: error.message || 'Error proxying TS file'
+    //}));
   }
 });
